@@ -8,6 +8,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ApplyDiscountDto } from './dto/apply-discount.dto';
 import { S3Service } from '../common/services/s3.service';
+import { RedisService } from '../common/services/redis.service';
+import { RedisService } from '../common/services/redis.service';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -47,6 +49,13 @@ describe('ProductsService', () => {
     deleteFile: jest.fn(),
   };
 
+  const mockRedisService = {
+    getJson: jest.fn(),
+    setJson: jest.fn(),
+    del: jest.fn(),
+    flushPattern: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -58,6 +67,10 @@ describe('ProductsService', () => {
         {
           provide: S3Service,
           useValue: mockS3Service,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
         },
       ],
     }).compile();

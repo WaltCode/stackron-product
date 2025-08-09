@@ -7,6 +7,7 @@ import { CartItem } from './entities/cart-item.entity';
 import { ProductsService } from '../products/products.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { Product } from '../products/entities/product.entity';
+import { RedisService } from '../common/services/redis.service';
 
 describe('CartService', () => {
   let service: CartService;
@@ -56,6 +57,12 @@ describe('CartService', () => {
     findOneEntity: jest.fn(),
   };
 
+  const mockRedisService = {
+    getJson: jest.fn(),
+    setJson: jest.fn(),
+    del: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -67,6 +74,10 @@ describe('CartService', () => {
         {
           provide: ProductsService,
           useValue: mockProductsService,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
         },
       ],
     }).compile();

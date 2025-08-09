@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import config from '../config';
+
 
 @Injectable()
 export class S3Service {
@@ -9,13 +11,13 @@ export class S3Service {
 
   constructor() {
     this.s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'us-east-1',
+      region: config.aws.region || 'us-east-1',
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: config.aws.accessKeyId || '',
+        secretAccessKey: config.aws.secretAccessKey || '',
       },
     });
-    this.bucketName = process.env.AWS_S3_BUCKET_NAME || 'stackron-product-images';
+    this.bucketName = config.aws.bucket|| 'stackron-product-images';
   }
 
   async uploadFile(file: Express.Multer.File, folder: string = 'products'): Promise<string> {

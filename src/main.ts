@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import config from './common/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,7 +15,7 @@ async function bootstrap() {
   }));
 
   // Setup Swagger documentation
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('Stackron API')
     .setDescription('REST API for product and cart management')
     .setVersion('1.0')
@@ -22,11 +23,22 @@ async function bootstrap() {
     .addTag('cart')
     .build();
   
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(3000);
-  console.log('Application is running on: http://localhost:3000');
-  console.log('Swagger documentation: http://localhost:3000/docs');
+  await app.listen(config.port || 3000);
 }
-bootstrap();
+bootstrap()
+  .then(() => {
+    Logger.log(`
+    ------------
+    Server Application Started!
+    API V1: ${config.baseUrl}
+    API Docs: ${config.baseUrl}/docs
+    Server Started Successfully
+    ------------
+`);
+  })
+  .catch((error) => {
+    Logger.error(`Failed to start the application:= , ${error}`);
+  });;

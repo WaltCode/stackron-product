@@ -7,12 +7,14 @@ import { Product } from '../src/products/entities/product.entity';
 import { CartItem } from '../src/cart/entities/cart-item.entity';
 import { Repository } from 'typeorm';
 import { S3Service } from '../src/common/services/s3.service';
+import { RedisService } from '../src/common/services/redis.service';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
   let productRepository: Repository<Product>;
   let cartRepository: Repository<CartItem>;
   let s3Service: S3Service;
+  let redisService: RedisService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -22,6 +24,14 @@ describe('AppController (e2e)', () => {
       .useValue({
         uploadFile: jest.fn().mockResolvedValue('https://mock-s3-url.com/test-image.jpg'),
         deleteFile: jest.fn().mockResolvedValue(undefined),
+      })
+      .overrideProvider(RedisService)
+      .useValue({
+        getJson: jest.fn().mockResolvedValue(null),
+        setJson: jest.fn().mockResolvedValue(true),
+        del: jest.fn().mockResolvedValue(true),
+        flushPattern: jest.fn().mockResolvedValue(true),
+        isConnected: jest.fn().mockReturnValue(false), // Disable caching in tests
       })
       .compile();
 
@@ -37,6 +47,7 @@ describe('AppController (e2e)', () => {
     productRepository = moduleFixture.get<Repository<Product>>(getRepositoryToken(Product));
     cartRepository = moduleFixture.get<Repository<CartItem>>(getRepositoryToken(CartItem));
     s3Service = moduleFixture.get<S3Service>(S3Service);
+    redisService = moduleFixture.get<RedisService>(RedisService);
 
     await app.init();
 

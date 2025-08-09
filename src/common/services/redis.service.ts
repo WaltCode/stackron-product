@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
+import config from '../config';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -8,7 +9,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor() {
     this.client = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      url: config.redis.url || 'redis://localhost:6379',
       socket: {
         connectTimeout: 5000,
       },
