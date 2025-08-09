@@ -17,7 +17,7 @@ export class S3Service {
         secretAccessKey: config.aws.secretAccessKey || '',
       },
     });
-    this.bucketName = config.aws.bucket|| 'stackron-product-images';
+    this.bucketName = config.aws.bucket|| 'tackron-product-images';
   }
 
   async uploadFile(file: Express.Multer.File, folder: string = 'products'): Promise<string> {
@@ -35,13 +35,12 @@ export class S3Service {
         Key: fileName,
         Body: file.buffer,
         ContentType: file.mimetype,
-        ACL: 'public-read',
       });
 
       await this.s3Client.send(command);
 
       // Return the public URL
-      return `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${fileName}`;
+      return `https://${this.bucketName}.s3.${config.aws.region || 'us-east-1'}.amazonaws.com/${fileName}`;
     } catch (error) {
       throw new BadRequestException(`Failed to upload file: ${error.message}`);
     }

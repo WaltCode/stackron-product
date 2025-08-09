@@ -9,7 +9,6 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ApplyDiscountDto } from './dto/apply-discount.dto';
 import { S3Service } from '../common/services/s3.service';
 import { RedisService } from '../common/services/redis.service';
-import { RedisService } from '../common/services/redis.service';
 
 describe('ProductsService', () => {
   let service: ProductsService;

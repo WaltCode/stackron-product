@@ -6,11 +6,16 @@ import { ProductsService } from '../products/products.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { CartResponseDto, CartItemWithPricingDto } from './dto/cart-response.dto';
 import { RedisService } from '../common/services/redis.service';
+import {
+  calculateLineTotal,
+  safeSubtract,
+  sumArray,
+  toPreciseDecimal,
+} from '../common/utils/arithmetic.utils';
 
 @Injectable()
 export class CartService {
   private readonly CART_CACHE_KEY = 'cart:items';
-  private readonly CART_CACHE_TTL = 300; // 5 minutes
 
   constructor(
     @InjectRepository(CartItem)
@@ -21,6 +26,11 @@ export class CartService {
 
   async addToCart(addToCartDto: AddToCartDto): Promise<CartItem> {
     const { product_id, quantity } = addToCartDto;
+
+    // Validate quantity
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('Quantity must be a positive integer');
+    }
 
     // Verify product exists and has sufficient stock
     const product = await this.productsService.findOneEntity(product_id);
@@ -70,11 +80,13 @@ export class CartService {
       order: { created_at: 'DESC' },
     });
 
-    // Transform cart items to include pricing information
+    // Transform cart items to include pricing information with optimized arithmetic
     const itemsWithPricing: CartItemWithPricingDto[] = cartItems.map((item) => {
-      const lineTotal = item.quantity * item.product.effectivePrice;
-      const originalLineTotal = item.quantity * Number(item.product.price);
-      const lineSavings = originalLineTotal - lineTotal;
+      const originalPrice = toPreciseDecimal(item.product.price);
+      const effectivePrice = item.product.effectivePrice;
+      const lineTotal = calculateLineTotal(item.quantity, effectivePrice);
+      const originalLineTotal = calculateLineTotal(item.quantity, originalPrice);
+      const lineSavings = safeSubtract(originalLineTotal, lineTotal);
 
       return {
         id: item.id,
@@ -85,33 +97,33 @@ export class CartService {
           id: item.product.id,
           name: item.product.name,
           description: item.product.description,
-          originalPrice: Number(item.product.price),
-          effectivePrice: item.product.effectivePrice,
+          originalPrice,
+          effectivePrice,
           discountAmount: item.product.discountAmount,
           isDiscountActive: item.product.isDiscountActive,
           image_url: item.product.image_url,
           stock_quantity: item.product.stock_quantity,
         },
-        lineTotal: Number(lineTotal.toFixed(2)),
-        lineSavings: Number(lineSavings.toFixed(2)),
+        lineTotal,
+        lineSavings,
       };
     });
 
+    // Calculate totals with optimized arithmetic
     const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = itemsWithPricing.reduce((sum, item) => sum + item.lineTotal, 0);
-    const totalOriginalPrice = itemsWithPricing.reduce(
-      (sum, item) => sum + item.quantity * item.product.originalPrice,
-      0,
+    const totalPrice = sumArray(itemsWithPricing.map((item) => item.lineTotal));
+    const totalOriginalPrice = sumArray(
+      itemsWithPricing.map((item) => calculateLineTotal(item.quantity, item.product.originalPrice)),
     );
-    const totalSavings = totalOriginalPrice - totalPrice;
+    const totalSavings = safeSubtract(totalOriginalPrice, totalPrice);
     const uniqueProducts = cartItems.length;
 
     return {
       items: itemsWithPricing,
       totalItems,
-      totalPrice: Number(totalPrice.toFixed(2)),
-      totalOriginalPrice: Number(totalOriginalPrice.toFixed(2)),
-      totalSavings: Number(totalSavings.toFixed(2)),
+      totalPrice,
+      totalOriginalPrice,
+      totalSavings,
       uniqueProducts,
     };
   }

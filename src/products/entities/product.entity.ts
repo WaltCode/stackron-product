@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { applyDiscount, toPreciseDecimal } from '../../common/utils/arithmetic.utils';
 
 @Entity('products')
 export class Product {
@@ -69,17 +70,18 @@ export class Product {
 
   @ApiProperty({ description: 'Effective price after discount (if applicable)' })
   get effectivePrice(): number {
-    if (this.isDiscountActive) {
-      const discountAmount = (Number(this.price) * Number(this.discount_percentage)) / 100;
-      return Number((Number(this.price) - discountAmount).toFixed(2));
+    if (this.isDiscountActive && this.discount_percentage) {
+      const discountResult = applyDiscount(this.price, this.discount_percentage);
+      return discountResult.finalPrice;
     }
-    return Number(this.price);
+    return toPreciseDecimal(this.price);
   }
 
   @ApiProperty({ description: 'Discount amount in currency' })
   get discountAmount(): number {
-    if (this.isDiscountActive) {
-      return Number((Number(this.price) - this.effectivePrice).toFixed(2));
+    if (this.isDiscountActive && this.discount_percentage) {
+      const discountResult = applyDiscount(this.price, this.discount_percentage);
+      return discountResult.discountAmount;
     }
     return 0;
   }

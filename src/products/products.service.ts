@@ -9,6 +9,7 @@ import { ApplyDiscountDto } from './dto/apply-discount.dto';
 import { ProductWithPricingDto } from './dto/product-with-pricing.dto';
 import { S3Service } from '../common/services/s3.service';
 import { RedisService } from '../common/services/redis.service';
+import { isValidMonetaryAmount } from '../common/utils/arithmetic.utils';
 
 @Injectable()
 export class ProductsService {
@@ -24,6 +25,21 @@ export class ProductsService {
   ) {}
 
   async create(createProductDto: CreateProductDto, imageFile?: any): Promise<Product> {
+    // Validate price
+    if (!isValidMonetaryAmount(createProductDto.price)) {
+      throw new BadRequestException('Price must be a valid positive number');
+    }
+
+    // Validate discount percentage if provided
+    if (createProductDto.discount_percentage !== undefined) {
+      if (
+        !isValidMonetaryAmount(createProductDto.discount_percentage) ||
+        createProductDto.discount_percentage > 100
+      ) {
+        throw new BadRequestException('Discount percentage must be between 0 and 100');
+      }
+    }
+
     let imageUrl: string | undefined;
 
     // Upload image to S3 if provided
@@ -126,6 +142,21 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
     imageFile?: any,
   ): Promise<ProductWithPricingDto> {
+    // Validate price if provided
+    if (updateProductDto.price !== undefined && !isValidMonetaryAmount(updateProductDto.price)) {
+      throw new BadRequestException('Price must be a valid positive number');
+    }
+
+    // Validate discount percentage if provided
+    if (updateProductDto.discount_percentage !== undefined) {
+      if (
+        !isValidMonetaryAmount(updateProductDto.discount_percentage) ||
+        updateProductDto.discount_percentage > 100
+      ) {
+        throw new BadRequestException('Discount percentage must be between 0 and 100');
+      }
+    }
+
     const product = await this.findOneEntity(id);
 
     let imageUrl: string | undefined;
@@ -182,6 +213,15 @@ export class ProductsService {
     id: string,
     applyDiscountDto: ApplyDiscountDto,
   ): Promise<ProductWithPricingDto> {
+    // Validate discount percentage
+    if (
+      !isValidMonetaryAmount(applyDiscountDto.discount_percentage) ||
+      applyDiscountDto.discount_percentage <= 0 ||
+      applyDiscountDto.discount_percentage > 100
+    ) {
+      throw new BadRequestException('Discount percentage must be between 0 and 100');
+    }
+
     const product = await this.findOneEntity(id);
 
     // Validate date range if both dates are provided

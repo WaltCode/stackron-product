@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RedisService } from './redis.service';
 
 // Mock Redis client
 const mockRedisClient = {
@@ -18,19 +17,34 @@ const mockRedisClient = {
   on: jest.fn(),
 };
 
+// Mock the redis module before importing RedisService
 jest.mock('redis', () => ({
   createClient: jest.fn(() => mockRedisClient),
 }));
+
+// Import RedisService after mocking
+import { RedisService } from './redis.service';
 
 describe('RedisService', () => {
   let service: RedisService;
 
   beforeEach(async () => {
+    // Reset all mocks
+    jest.clearAllMocks();
+
+    // Reset isOpen to default state
+    mockRedisClient.isOpen = true;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [RedisService],
     }).compile();
 
     service = module.get<RedisService>(RedisService);
+  });
+
+  afterEach(() => {
+    // Reset isOpen to default state after each test
+    mockRedisClient.isOpen = true;
     jest.clearAllMocks();
   });
 
@@ -64,12 +78,17 @@ describe('RedisService', () => {
     });
 
     it('should return null when Redis is not connected', async () => {
+      // Temporarily set isOpen to false
+      const originalIsOpen = mockRedisClient.isOpen;
       mockRedisClient.isOpen = false;
 
       const result = await service.get('test-key');
 
       expect(result).toBeNull();
       expect(mockRedisClient.get).not.toHaveBeenCalled();
+
+      // Restore original state
+      mockRedisClient.isOpen = originalIsOpen;
     });
 
     it('should handle errors gracefully', async () => {
@@ -106,11 +125,18 @@ describe('RedisService', () => {
     });
 
     it('should return false when Redis is not connected', async () => {
+      // Temporarily set isOpen to false
+      const originalIsOpen = mockRedisClient.isOpen;
       mockRedisClient.isOpen = false;
 
       const result = await service.set('test-key', 'test-value');
 
       expect(result).toBe(false);
+      expect(mockRedisClient.set).not.toHaveBeenCalled();
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+
+      // Restore original state
+      mockRedisClient.isOpen = originalIsOpen;
     });
   });
 
@@ -146,6 +172,97 @@ describe('RedisService', () => {
       expect(mockRedisClient.set).toHaveBeenCalledWith(key, JSON.stringify(value));
       expect(result).toBe(true);
     });
+
+    it('should handle JSON stringify errors', async () => {
+      const key = 'test-key';
+      const circularValue: any = {};
+      circularValue.self = circularValue; // Create circular reference
+
+      const result = await service.setJson(key, circularValue);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('del', () => {
+    it('should delete key and return true when successful', async () => {
+      const key = 'test-key';
+      mockRedisClient.del.mockResolvedValue(1);
+
+      const result = await service.del(key);
+
+      expect(mockRedisClient.del).toHaveBeenCalledWith(key);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when key does not exist', async () => {
+      const key = 'test-key';
+      mockRedisClient.del.mockResolvedValue(0);
+
+      const result = await service.del(key);
+
+      expect(mockRedisClient.del).toHaveBeenCalledWith(key);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when Redis is not connected', async () => {
+      const originalIsOpen = mockRedisClient.isOpen;
+      mockRedisClient.isOpen = false;
+
+      const result = await service.del('test-key');
+
+      expect(result).toBe(false);
+      expect(mockRedisClient.del).not.toHaveBeenCalled();
+
+      mockRedisClient.isOpen = originalIsOpen;
+    });
+  });
+
+  describe('exists', () => {
+    it('should return true when key exists', async () => {
+      const key = 'test-key';
+      mockRedisClient.exists.mockResolvedValue(1);
+
+      const result = await service.exists(key);
+
+      expect(mockRedisClient.exists).toHaveBeenCalledWith(key);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when key does not exist', async () => {
+      const key = 'test-key';
+      mockRedisClient.exists.mockResolvedValue(0);
+
+      const result = await service.exists(key);
+
+      expect(mockRedisClient.exists).toHaveBeenCalledWith(key);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getTtl', () => {
+    it('should return TTL value', async () => {
+      const key = 'test-key';
+      const ttl = 300;
+      mockRedisClient.ttl.mockResolvedValue(ttl);
+
+      const result = await service.getTtl(key);
+
+      expect(mockRedisClient.ttl).toHaveBeenCalledWith(key);
+      expect(result).toBe(ttl);
+    });
+
+    it('should return null when Redis is not connected', async () => {
+      const originalIsOpen = mockRedisClient.isOpen;
+      mockRedisClient.isOpen = false;
+
+      const result = await service.getTtl('test-key');
+
+      expect(result).toBeNull();
+      expect(mockRedisClient.ttl).not.toHaveBeenCalled();
+
+      mockRedisClient.isOpen = originalIsOpen;
+    });
   });
 
   describe('increment', () => {
@@ -173,6 +290,26 @@ describe('RedisService', () => {
       expect(mockRedisClient.expire).not.toHaveBeenCalled();
       expect(result).toBe(2);
     });
+
+    it('should return null when Redis is not connected', async () => {
+      const originalIsOpen = mockRedisClient.isOpen;
+      mockRedisClient.isOpen = false;
+
+      const result = await service.increment('test-key', 300);
+
+      expect(result).toBeNull();
+      expect(mockRedisClient.incr).not.toHaveBeenCalled();
+
+      mockRedisClient.isOpen = originalIsOpen;
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockRedisClient.incr.mockRejectedValue(new Error('Redis error'));
+
+      const result = await service.increment('test-key', 300);
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('flushPattern', () => {
@@ -199,15 +336,53 @@ describe('RedisService', () => {
       expect(mockRedisClient.del).not.toHaveBeenCalled();
       expect(result).toBe(true);
     });
+
+    it('should return false when Redis is not connected', async () => {
+      const originalIsOpen = mockRedisClient.isOpen;
+      mockRedisClient.isOpen = false;
+
+      const result = await service.flushPattern('test:*');
+
+      expect(result).toBe(false);
+      expect(mockRedisClient.keys).not.toHaveBeenCalled();
+
+      mockRedisClient.isOpen = originalIsOpen;
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockRedisClient.keys.mockRejectedValue(new Error('Redis error'));
+
+      const result = await service.flushPattern('test:*');
+
+      expect(result).toBe(false);
+    });
   });
 
   describe('isConnected', () => {
-    it('should return connection status', () => {
+    it('should return true when Redis is connected', () => {
       mockRedisClient.isOpen = true;
       expect(service.isConnected()).toBe(true);
+    });
 
+    it('should return false when Redis is not connected', () => {
+      const originalIsOpen = mockRedisClient.isOpen;
       mockRedisClient.isOpen = false;
+
       expect(service.isConnected()).toBe(false);
+
+      // Restore original state
+      mockRedisClient.isOpen = originalIsOpen;
+    });
+
+    it('should return false when client is undefined', () => {
+      // This tests the fallback behavior
+      const originalIsOpen = mockRedisClient.isOpen;
+      mockRedisClient.isOpen = undefined;
+
+      expect(service.isConnected()).toBe(false);
+
+      // Restore original state
+      mockRedisClient.isOpen = originalIsOpen;
     });
   });
 });
