@@ -1,0 +1,131 @@
+### Create a new product with image upload
+POST http://localhost:3000/products
+Content-Type: multipart/form-data
+
+# Use a form-data request with the following fields:
+# name: iPhone 15 Pro
+# description: Latest iPhone with titanium design and A17 Pro chip
+# price: 1199.99
+# stock_quantity: 25
+# image: [select image file - JPEG, PNG, WebP, GIF max 5MB]
+
+# Note: Use a tool like Postman, Insomnia, or curl with form-data for file uploads
+# Example curl command:
+# curl -X POST http://localhost:3000/products \
+#   -F "name=iPhone 15 Pro" \
+#   -F "description=Latest iPhone with titanium design" \
+#   -F "price=1199.99" \
+#   -F "stock_quantity=25" \
+#   -F "image=@/path/to/your/image.jpg"
+
+### Create another product with discount and image
+POST http://localhost:3000/products
+Content-Type: multipart/form-data
+
+# Use form-data with the following fields:
+# name: Samsung Galaxy S24
+# description: Android flagship with AI features
+# price: 899.99
+# stock_quantity: 30
+# discount_percentage: 15
+# discount_start_date: 2024-01-01T00:00:00.000Z
+# discount_end_date: 2024-12-31T23:59:59.000Z
+# image: [select image file]
+
+### Get all products
+GET http://localhost:3000/products
+
+### Get products with pagination
+GET http://localhost:3000/products?page=1&limit=5
+
+### Filter products by name
+GET http://localhost:3000/products?name=iPhone
+
+### Filter products by price range
+GET http://localhost:3000/products?minPrice=800&maxPrice=1200
+
+### Get a specific product (replace with actual UUID)
+GET http://localhost:3000/products/123e4567-e89b-12d3-a456-426614174000
+
+### Update a product with new image (replace with actual UUID)
+PUT http://localhost:3000/products/123e4567-e89b-12d3-a456-426614174000
+Content-Type: multipart/form-data
+
+# Use form-data with the following fields:
+# price: 1099.99
+# stock_quantity: 20
+# image: [select new image file to replace existing one]
+
+### Apply discount to a product (replace with actual UUID)
+PUT http://localhost:3000/products/123e4567-e89b-12d3-a456-426614174000/discount
+Content-Type: application/json
+
+{
+  "discount_percentage": 20,
+  "discount_start_date": "2024-06-01T00:00:00.000Z",
+  "discount_end_date": "2024-08-31T23:59:59.000Z"
+}
+
+### Remove discount from a product (replace with actual UUID)
+DELETE http://localhost:3000/products/123e4567-e89b-12d3-a456-426614174000/discount
+
+### Delete a product (replace with actual UUID)
+DELETE http://localhost:3000/products/123e4567-e89b-12d3-a456-426614174000
+
+### Add product to cart (replace with actual UUID)
+POST http://localhost:3000/cart/items
+Content-Type: application/json
+
+{
+  "product_id": "123e4567-e89b-12d3-a456-426614174000",
+  "quantity": 2
+}
+
+### Add another product to cart (replace with actual UUID)
+POST http://localhost:3000/cart/items
+Content-Type: application/json
+
+{
+  "product_id": "456e7890-e89b-12d3-a456-426614174001",
+  "quantity": 1
+}
+
+### Get cart contents
+GET http://localhost:3000/cart
+
+### Remove item from cart (replace with actual cart item UUID)
+DELETE http://localhost:3000/cart/items/789e0123-e89b-12d3-a456-426614174002
+
+### Clear entire cart
+DELETE http://localhost:3000/cart
+
+### Error examples
+
+### Try to create product with invalid data
+POST http://localhost:3000/products
+Content-Type: application/json
+
+{
+  "name": "",
+  "description": "Invalid product",
+  "price": -10,
+  "stock_quantity": -5
+}
+
+### Try to add non-existent product to cart
+POST http://localhost:3000/cart/items
+Content-Type: application/json
+
+{
+  "product_id": "999e4567-e89b-12d3-a456-426614174999",
+  "quantity": 1
+}
+
+### Try to add more items than available stock (replace with actual UUID)
+POST http://localhost:3000/cart/items
+Content-Type: application/json
+
+{
+  "product_id": "123e4567-e89b-12d3-a456-426614174000",
+  "quantity": 100
+}
